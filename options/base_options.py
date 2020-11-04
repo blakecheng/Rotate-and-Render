@@ -102,6 +102,47 @@ class BaseOptions():
         self.parser = parser
         return opt
 
+    def gather_options_jupyter(self):
+
+        argstr = ["--names","rs_model","--dataset", "example", "--list_start", "0", "--list_end", "10", \
+        "--dataset_mode","allface","--gpu_ids","0,1","--netG","rotatespade","--norm_G","spectralsyncbatch", \
+            "--model","rotatespade","--label_nc","5","--nThreads","3","--heatmap_size","2.5","--chunk_size","1", \
+        "--no_gaussian_landmark","--multi_gpu","--device_count","2","--render_thread","1","--label_mask", \
+        "--align","--erode_kernel","21","--yaw_poses","0","30"]
+        # argstr_part = ["--name","face","--dataset_mode", "paired", "--adaptive_spade", "--warp_ref", "--batchSize","8","--no_flow_gt"]
+
+            # initialize parser with basic options
+        if not self.initialized:
+            parser = argparse.ArgumentParser(
+                formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+            parser = self.initialize(parser)
+
+        # get the basic options
+        opt, unknown = parser.parse_known_args(argstr)
+
+        # modify model-related parser options
+        model_name = opt.model
+        model_option_setter = models.get_option_setter(model_name)
+        parser = model_option_setter(parser, self.isTrain)
+
+        # modify dataset-related parser options
+        dataset_mode = opt.dataset_mode
+        dataset_option_setter = data.get_option_setter(dataset_mode)
+        parser = dataset_option_setter(parser, self.isTrain)
+
+        opt, unknown = parser.parse_known_args(argstr)
+
+        # if there is opt_file, load it.
+        # lt options will be overwritten
+        if opt.load_from_opt_file:
+            parser = self.update_options_from_file(parser, opt)
+
+        opt = parser.parse_args(argstr)
+        self.parser = parser
+        return opt
+
+
+
     def print_options(self, opt):
         message = ''
         message += '----------------- Options ---------------\n'
@@ -147,9 +188,12 @@ class BaseOptions():
         new_opt = pickle.load(open(file_name + '.pkl', 'rb'))
         return new_opt
 
-    def parse(self, save=False):
+    def parse(self, save=False, is_jupyter=False):
 
-        opt = self.gather_options()
+        if is_jupyter==False:
+            opt = self.gather_options()
+        else:
+            opt = self.gather_options_jupyter()
         opt.isTrain = self.isTrain   # train or test
 
         self.print_options(opt)
@@ -189,3 +233,6 @@ class BaseOptions():
 
         self.opt = opt
         return self.opt
+
+
+    
